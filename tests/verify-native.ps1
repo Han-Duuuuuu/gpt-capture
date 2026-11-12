@@ -16,6 +16,7 @@ $start.CreateNoWindow = $true
 $start.RedirectStandardInput = $true
 $start.RedirectStandardOutput = $true
 $start.RedirectStandardError = $true
+$start.StandardInputEncoding = New-Object System.Text.UTF8Encoding($false)
 $process = [System.Diagnostics.Process]::Start($start)
 function Read-Exact([System.IO.Stream]$stream, [int]$length) {
     $buffer = New-Object byte[] $length
@@ -49,6 +50,11 @@ try {
     if (-not $process.WaitForExit(5000)) { throw 'Host did not exit at EOF.' }
     if ($process.ExitCode -ne 0) { throw ('Host failed: ' + $process.StandardError.ReadToEnd()) }
     Write-Host 'PASS Windows host compilation, registry, origin allowlist, framed JSON, errors, EOF cleanup'
+} catch {
+    if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+    Write-Host ('Native host exit code: ' + $process.ExitCode)
+    Write-Host ('Native host stderr: ' + $process.StandardError.ReadToEnd())
+    throw
 } finally {
     if (-not $process.HasExited) { $process.Kill() }
     $process.Dispose()
