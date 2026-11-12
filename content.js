@@ -12,8 +12,8 @@
       .orb:hover,.orb[aria-expanded=true]{background:#25443f;box-shadow:0 4px 24px #0004;outline:2px solid #7cdeb433}
       button:focus-visible{outline:2px solid #71e9be;outline-offset:3px} svg{width:24px;height:24px;pointer-events:none}
       .menu{position:absolute;right:58px;top:0;width:252px;padding:8px;border:1px solid #ffffff20;border-radius:16px;background:#172125;box-shadow:0 12px 40px #0005}
-      .title{padding:7px 10px 10px;color:#adbbb9;font-size:12px;letter-spacing:1px}.item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 10px;background:none;border:0;border-radius:10px;color:inherit}.item:hover{background:#ffffff10}.item svg{width:21px;color:#7ce8c4;flex-shrink:0}.item small{display:block;color:#93a4a8;font-size:11px;margin-top:3px}
-      .foot{border-top:1px solid #ffffff12;padding:10px 10px 4px;color:#829593;font-size:11px}.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);max-width:min(480px,90vw);padding:12px 18px;background:#172b27;color:#ddfff3;border:1px solid #ffffff24;border-radius:12px;box-shadow:0 5px 30px #0003;pointer-events:auto}
+      .title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 5px 6px 10px;color:#adbbb9;font-size:12px;letter-spacing:1px}.settings-toggle{display:grid;place-items:center;width:30px;height:30px;padding:5px;border:0;border-radius:8px;background:none;color:#93a4a8}.settings-toggle:hover,.settings-toggle[aria-expanded=true]{background:#ffffff10;color:#7ce8c4}.settings-toggle svg{width:19px;height:19px}.settings-panel{margin:0 2px 5px;padding-bottom:5px;border-bottom:1px solid #ffffff12}.item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 10px;background:none;border:0;border-radius:10px;color:inherit}.item:hover{background:#ffffff10}.item svg{width:21px;color:#7ce8c4;flex-shrink:0}.item small{display:block;color:#93a4a8;font-size:11px;margin-top:3px}
+      .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);max-width:min(480px,90vw);padding:12px 18px;background:#172b27;color:#ddfff3;border:1px solid #ffffff24;border-radius:12px;box-shadow:0 5px 30px #0003;pointer-events:auto}
       [hidden]{display:none!important}
     </style>
     <div class="dock">
@@ -21,18 +21,19 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h4l2-3h4l2 3h4v13H4z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5"/></svg>
       </button>
       <div class="menu" hidden>
-        <div class="title">GPT 截图助手</div>
+        <div class="title"><span>GPT 截图助手</span><button class="settings-toggle" aria-label="展开或收起首次启用设置" aria-expanded="false" aria-controls="settings-panel" title="首次启用设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2h4l.5 3a7 7 0 0 1 1.7 1l2.8-1 2 3.5-2.3 2a7 7 0 0 1 0 3l2.3 2-2 3.5-2.8-1a7 7 0 0 1-1.7 1L14 22h-4l-.5-3a7 7 0 0 1-1.7-1L5 19l-2-3.5 2.3-2a7 7 0 0 1 0-3L3 8.5 5 5l2.8 1a7 7 0 0 1 1.7-1z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <div class="settings-panel" id="settings-panel" hidden><button class="item" id="setup"><span>首次启用一键截图<small>安装 Windows 本机助手 / 检查连接</small></span></button></div>
         <button class="item" data-mode="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M7 6h.01M10 6h.01"/></svg><span>截取当前页面<small>框选当前可见的网页内容</small></span></button>
         <button class="item" data-mode="desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5M8 7l8 6M16 7l-8 6"/></svg><span>隐藏本页后截图<small>直接截取窗口后方画面 · 无需选择</small></span></button>
-        <button class="item" id="setup"><span>首次启用 Windows 一键截图<small>安装本机助手 / 检查连接</small></span></button>
-        <div class="foot">确认后放入输入框 · 图片不保存到磁盘</div>
       </div>
     </div><div class="toast" role="status" hidden></div>`;
   document.documentElement.appendChild(host);
   const dock = shadow.querySelector('.dock'), orb = shadow.querySelector('.orb'), menu = shadow.querySelector('.menu');
-  let busy = false, enabled = true, hiddenForCapture = false, toastTimer;
+  const settingsToggle = shadow.querySelector('.settings-toggle'), settingsPanel = shadow.querySelector('#settings-panel');
+  let busy = false, enabled = true, hiddenForCapture = false, setupIntroSeen = true, toastTimer;
   const visibility = () => { dock.hidden = !enabled || hiddenForCapture; };
-  function closeMenu() { menu.hidden = true; orb.setAttribute('aria-expanded', 'false'); }
+  function showSettings(show) { settingsPanel.hidden = !show; settingsToggle.setAttribute('aria-expanded', String(show)); }
+  function closeMenu() { menu.hidden = true; orb.setAttribute('aria-expanded', 'false'); showSettings(false); }
   function toast(message) {
     const el = shadow.querySelector('.toast'); el.textContent = message; el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 6000);
@@ -44,15 +45,18 @@
     dock.style.cssText = `left:${left}px;top:${top}px;right:auto;`;
     menu.style.right = left > 275 ? '58px' : 'auto';
     menu.style.left = left > 275 ? 'auto' : '58px';
-    menu.style.top = top > innerHeight - 250 ? 'auto' : '0';
-    menu.style.bottom = top > innerHeight - 250 ? '0' : 'auto';
+    const above = top + (menu.offsetHeight || 250) > innerHeight - padding;
+    menu.style.top = above ? 'auto' : '0';
+    menu.style.bottom = above ? '0' : 'auto';
   }
-  chrome.storage.local.get(['enabled', 'position']).then(settings => {
+  const settingsReady = chrome.storage.local.get(['enabled', 'position', 'setupIntroSeen']).then(settings => {
     enabled = settings.enabled !== false; visibility();
+    setupIntroSeen = settings.setupIntroSeen === true;
     if (settings.position) position(settings.position.x * innerWidth, settings.position.y * innerHeight);
   });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.enabled) { enabled = changes.enabled.newValue !== false; closeMenu(); visibility(); }
+    if (area === 'local' && changes.setupIntroSeen) setupIntroSeen = changes.setupIntroSeen.newValue === true;
   });
   window.addEventListener('resize', () => {
     const rect = dock.getBoundingClientRect(); if (!dock.hidden) position(rect.x, rect.y);
@@ -80,9 +84,20 @@
   }
   orb.addEventListener('pointerup', endDrag);
   orb.addEventListener('pointercancel', endDrag);
-  orb.addEventListener('click', () => {
+  orb.addEventListener('click', async () => {
     if (suppressClick) { suppressClick = false; return; }
-    menu.hidden = !menu.hidden; orb.setAttribute('aria-expanded', String(!menu.hidden));
+    await settingsReady;
+    if (!menu.hidden) { closeMenu(); return; }
+    menu.hidden = false; orb.setAttribute('aria-expanded', 'true');
+    showSettings(!setupIntroSeen);
+    if (!setupIntroSeen) {
+      setupIntroSeen = true;
+      chrome.storage.local.set({setupIntroSeen: true}).catch(() => {});
+    }
+    const rect = dock.getBoundingClientRect(); position(rect.x, rect.y);
+  });
+  settingsToggle.addEventListener('click', () => {
+    showSettings(settingsPanel.hidden);
     const rect = dock.getBoundingClientRect(); position(rect.x, rect.y);
   });
   document.addEventListener('pointerdown', event => { if (!event.composedPath().includes(host)) closeMenu(); });
