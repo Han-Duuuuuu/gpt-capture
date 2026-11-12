@@ -26,7 +26,7 @@ const chrome = {
   action: {onClicked: {addListener: fn => { events.action = fn; }}}
 };
 const sandbox = vm.createContext({chrome, crypto: webcrypto, setTimeout, Map, connectCaptureHost});
-const sourceCode = fs.readFileSync(new URL('../background.js', import.meta.url), 'utf8').replace(/^import .*\n/, '');
+const sourceCode = fs.readFileSync(new URL('../background.js', import.meta.url), 'utf8').replace(/^import [^\r\n]*\r?\n/, '');
 vm.runInContext(sourceCode, sandbox);
 const send = (message, sender) => new Promise(resolve => events.message(message, {id: 'test', ...sender}, resolve));
 const source = {tab: tabs.get(10), url: tabs.get(10).url};
