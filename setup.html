@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>启用 Windows 一键截图</title><link rel="stylesheet" href="setup.css"></head>
+<body><main>
+  <p class="tag">GPT 截图助手 · WINDOWS</p>
+  <h1>一键隐藏，截下后面的画面。</h1>
+  <p>首次安装本机助手后，“隐藏本页后截图”会自动完成截屏，直接进入框选，无需选择屏幕。</p>
+  <ol>
+    <li>下载并解压最新的完整插件包。</li>
+    <li>打开其中的 <code>windows</code> 文件夹，双击 <code>install.cmd</code>，看到“Installed successfully”后关闭安装窗口。不需要管理员权限。</li>
+    <li>点击下方“检查连接”，成功后回到 ChatGPT 刷新页面，即可使用。</li>
+  </ol>
+  <p>从 1.0 升级时，请先在 Edge 扩展页移除旧版，再加载新版。新版使用固定扩展 ID；保留 <code>manifest.json</code> 中的 <code>key</code> 字段。</p>
+  <div class="actions"><a href="https://github.com/Han-Duuuuuu/gpt-capture/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">下载最新插件包</a><button id="check">检查连接</button></div>
+  <p id="status" role="status"></p>
+  <aside>默认截取原 Edge 窗口所在的显示器；窗口跨屏时取它占面积最大的屏幕。确认或取消后恢复原窗口。截图不写入图片文件，只在内存中传给插件；点击确认后通过 ChatGPT 的正常附件流程上传。</aside>
+  <p class="muted">助手仅在使用时由 Edge 启动，不常驻后台。卸载助手可运行 <code>windows/uninstall.cmd</code>。</p>
+</main><script src="setup.js"></script></body></html>

@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "GPT 截图助手",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuCp8F6Uz1CgORJKW/xrKfbIe8B2mvmX6q9nAFk+lneT78Y77DGeowaOtsE7o8nJf1JhVl8MF36rrgZp8bG5WapYS2y50D1OfiwJnx++271ka0NmZ9NpuNlhSthe7VrsV9xpBqGD1VIoRO+NWeuNHyxmfsfA4V3PUYLVMJmNhKW/Yeu+SgkRhVMP1ZvQeJ6TO78jlISfdyQFbaDcbzAyL2S98BqTzhM1tRWeRrQiUHrRHzlsE5cx7uVnpAen4D2HqD94jFbT8PEyGh57Xfjlrk9JTJMsPlZuP6sWqlFXVz7QjW6kddj+yj2r0B7LXfw50saPwrzTYL8UB5wDFvCMIOQIDAQAB",
   "description": "框选网页或桌面截图，确认后直接放进 ChatGPT 输入框。图片只在内存中处理，不保存到磁盘。",
   "minimum_chrome_version": "116",
   "permissions": [
-    "desktopCapture",
+    "nativeMessaging",
     "storage",
     "clipboardWrite"
   ],
@@ -19,6 +20,7 @@
   "action": {
     "default_title": "显示 / 隐藏 GPT 截图按钮"
   },
+  "options_page": "setup.html",
   "content_scripts": [
     {
       "matches": [
@@ -35,4 +37,3 @@
     "extension_pages": "script-src 'self'; object-src 'none'"
   }
 }
-

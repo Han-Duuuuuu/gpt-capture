@@ -3,9 +3,8 @@ import {rectFromPoints, fitImage, toPixels} from './geometry.js';
 const $ = selector => document.querySelector(selector);
 const jobId = new URLSearchParams(location.search).get('job');
 const canvas = $('#canvas'), stage = $('#stage'), ctx = canvas.getContext('2d');
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 let job, image, fit, selection, gesture, tool = 'select', marks = [], draftMark;
-let stream, pickerId, delivering = false, noticeTimer, shuttingDown = false;
+let delivering = false, noticeTimer, shuttingDown = false;
 
 async function send(type, extra = {}) {
   const result = await chrome.runtime.sendMessage({type, jobId, ...extra});
@@ -17,12 +16,9 @@ function notice(text, persistent = false) {
   clearTimeout(noticeTimer);
   if (!persistent) noticeTimer = setTimeout(() => { $('#notice').hidden = true; }, 4500);
 }
-function stopStream() { stream?.getTracks().forEach(track => track.stop()); stream = null; }
 async function cancel() {
   if (shuttingDown || delivering) return;
   shuttingDown = true;
-  if (pickerId !== undefined) chrome.desktopCapture.cancelChooseDesktopMedia(pickerId);
-  stopStream();
   try { await send('CANCEL_CAPTURE'); } catch { window.close(); }
 }
 function setTool(value) {
@@ -196,61 +192,13 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Enter' && event.target.tagName !== 'BUTTON' && event.target.tagName !== 'INPUT') { event.preventDefault(); deliver(); }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !delivering) { event.preventDefault(); marks.pop(); render(); }
 });
-window.addEventListener('pagehide', stopStream);
 new ResizeObserver(resize).observe(stage);
-
-function selectDesktop() {
-  return new Promise((resolve, reject) => {
-    pickerId = chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], id => {
-      pickerId = undefined;
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(id);
-    });
-  });
-}
-async function waitFrame(video) {
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => video.readyState >= 2 ? resolve() : reject(new Error('没有获得屏幕画面，请重新截图。')), 5000);
-    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(() => { clearTimeout(timeout); resolve(); });
-    else video.addEventListener('loadeddata', () => { clearTimeout(timeout); resolve(); }, {once: true});
-  });
-}
-$('#choose').addEventListener('click', async () => {
-  $('#choose').disabled = true;
-  let video;
-  try {
-    const streamId = await selectDesktop();
-    if (!streamId) { await cancel(); return; }
-    stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {mandatory: {
-      chromeMediaSource: 'desktop', chromeMediaSourceId: streamId, maxWidth: 16384, maxHeight: 16384, maxFrameRate: 10
-    }}});
-    video = document.createElement('video'); video.muted = true; video.srcObject = stream;
-    await video.play();
-    await send('EDITOR_STATE', {state: 'minimized'});
-    // Let the screen picker and helper window disappear before taking a fresh frame.
-    await delay(450); await waitFrame(video);
-    const frame = document.createElement('canvas'); frame.width = video.videoWidth; frame.height = video.videoHeight;
-    if (!frame.width || !frame.height) throw new Error('屏幕画面为空，请重新选择。');
-    frame.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = frame.toDataURL('image/png'); frame.width = frame.height = 0;
-    stopStream(); video.srcObject = null;
-    await loadImage(dataUrl);
-  } catch (error) {
-    stopStream(); if (video) video.srcObject = null;
-    await send('EDITOR_STATE', {state: 'maximized'}).catch(() => {});
-    notice('无法截取屏幕：' + error.message + '。可重试，或按 Esc 恢复原页面。', true);
-  } finally { $('#choose').disabled = false; }
-});
 
 refreshControls();
 try {
   const result = await send('GET_JOB'); job = result.job;
   $('#mode-label').textContent = job.mode === 'page' ? '当前页面 / 框选截图' : '隐藏本页 / 框选截图';
-  if (job.mode === 'page') await loadImage(result.image);
-  else {
-    $('#intro-description').textContent = 'ChatGPT 所在窗口已暂时隐藏。选择一块屏幕或一个其他窗口，随后框选需要的内容。取消也会恢复原窗口。';
-    $('#choose').hidden = false;
-  }
+  await loadImage(result.image);
 } catch (error) {
   $('#intro-description').textContent = error.message;
   notice('请按 Esc 关闭后重试。', true);

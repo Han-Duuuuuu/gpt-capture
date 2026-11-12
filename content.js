@@ -23,7 +23,8 @@
       <div class="menu" hidden>
         <div class="title">GPT 截图助手</div>
         <button class="item" data-mode="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M7 6h.01M10 6h.01"/></svg><span>截取当前页面<small>框选当前可见的网页内容</small></span></button>
-        <button class="item" data-mode="desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5M8 7l8 6M16 7l-8 6"/></svg><span>隐藏本页后截图<small>隐藏此窗口，截取屏幕或其他窗口</small></span></button>
+        <button class="item" data-mode="desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5M8 7l8 6M16 7l-8 6"/></svg><span>隐藏本页后截图<small>直接截取窗口后方画面 · 无需选择</small></span></button>
+        <button class="item" id="setup"><span>首次启用 Windows 一键截图<small>安装本机助手 / 检查连接</small></span></button>
         <div class="foot">确认后放入输入框 · 图片不保存到磁盘</div>
       </div>
     </div><div class="toast" role="status" hidden></div>`;
@@ -95,6 +96,9 @@
     } catch (error) { hiddenForCapture = false; visibility(); toast(error.message + ' 如刚更新插件，请刷新页面。'); }
     finally { busy = false; }
   }));
+  shadow.querySelector('#setup').addEventListener('click', () => {
+    closeMenu(); chrome.runtime.sendMessage({type: 'OPEN_SETUP'}).catch(error => toast(error.message));
+  });
 
   function findComposer() {
     return [...document.querySelectorAll('#prompt-textarea, [data-testid="prompt-textarea"], [contenteditable="true"][role="textbox"], textarea[placeholder]')]

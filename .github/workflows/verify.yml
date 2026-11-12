@@ -1,0 +1,22 @@
+name: Verify screenshot assistant
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows-host:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify native message assembly and capture ordering
+        shell: pwsh
+        run: |
+          node tests/native-client.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/background.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Compile and verify actual Windows helper and installer
+        shell: powershell
+        run: ./tests/verify-native.ps1

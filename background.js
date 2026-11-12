@@ -1,3 +1,5 @@
+import {connectCaptureHost} from './native-client.js';
+
 // Screenshot bytes stay in this Map briefly, then move to the editor's memory.
 // storage.session contains recovery metadata only, never image data.
 const frames = new Map();
@@ -27,7 +29,7 @@ async function startCapture(mode, tab) {
   if (!supported(tab?.url) || !['page', 'desktop'].includes(mode)) throw new Error('请在 ChatGPT 页面使用截图按钮。');
   if (starting) throw new Error('截图正在启动，请稍候。');
   starting = true;
-  let job;
+  let job, native;
   try {
     const existing = await getJob();
     if (existing) {
@@ -42,16 +44,23 @@ async function startCapture(mode, tab) {
     job = {id: crypto.randomUUID(), mode, sourceTabId: tab.id, sourceWindowId: tab.windowId,
       sourceState: sourceWindow.state, editorWindowId: null, editorTabId: null};
     await saveJob(job);
+    const current = (await chrome.tabs.query({windowId: tab.windowId, active: true}))[0];
+    if (current?.id !== tab.id || !sourceWindow.focused) throw new Error('请回到要截图的 ChatGPT 页面后重试。');
     if (mode === 'page') {
-      const current = (await chrome.tabs.query({windowId: tab.windowId, active: true}))[0];
-      if (current?.id !== tab.id || !sourceWindow.focused) throw new Error('请回到要截图的 ChatGPT 页面后重试。');
       await chrome.tabs.sendMessage(tab.id, {type: 'PREPARE_CAPTURE'});
       await delay(100);
       frames.set(job.id, await chrome.tabs.captureVisibleTab(tab.windowId, {format: 'png'}));
     } else {
-      // A separate extension window survives minimizing the ChatGPT window.
+      // Prepare while Edge is still in front: the host remembers this physical monitor.
+      // No editor or picker is created until the exposed desktop has been captured.
+      native = connectCaptureHost();
+      await native.prepare();
       await chrome.windows.update(tab.windowId, {state: 'minimized'});
+      await delay(350);
+      frames.set(job.id, await native.capture());
+      native.close(); native = null;
     }
+    if ((await getJob())?.id !== job.id) throw new Error('原窗口已关闭，请重新截图。');
     const editor = await chrome.windows.create({url: chrome.runtime.getURL('editor.html') + '?job=' + job.id,
       type: 'popup', width: 1120, height: 780, focused: true});
     job.editorWindowId = editor.id;
@@ -61,7 +70,7 @@ async function startCapture(mode, tab) {
   } catch (error) {
     if (job) await finish(job);
     throw error;
-  } finally { starting = false; }
+  } finally { native?.close(); starting = false; }
 }
 
 async function editorJob(message, sender) {
@@ -80,12 +89,19 @@ async function editorJob(message, sender) {
 async function handle(message, sender) {
   if (sender.id !== chrome.runtime.id) throw new Error('无效请求。');
   if (message.type === 'START_CAPTURE') return startCapture(message.mode, sender.tab);
+  if (message.type === 'OPEN_SETUP' && supported(sender.tab?.url)) {
+    await chrome.tabs.create({url: chrome.runtime.getURL('setup.html')}); return {ok: true};
+  }
+  if (message.type === 'CHECK_NATIVE' && sender.url === chrome.runtime.getURL('setup.html')) {
+    const native = connectCaptureHost();
+    try { await native.ping(); return {ok: true}; } finally { native.close(); }
+  }
   const job = await editorJob(message, sender);
   switch (message.type) {
     case 'GET_JOB': {
       const image = frames.get(job.id);
       frames.delete(job.id);
-      if (job.mode === 'page' && !image) throw new Error('截图已释放，请关闭窗口后重新截图。');
+      if (!image) throw new Error('截图已释放，请关闭窗口后重新截图。');
       return {ok: true, job, image};
     }
     case 'EDITOR_STATE':
