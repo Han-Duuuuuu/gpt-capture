@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GPT 截图助手</title><link rel="stylesheet" href="editor.css"></head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-icon">⌗</span><div><strong>GPT 截图助手</strong><small>截下灵感，继续对话</small></div></div>
+    <div class="heading"><span id="mode-label">截图工作台</span><span id="instruction">图片仅在内存中处理</span></div>
+    <button id="cancel" class="quiet">取消 <kbd>Esc</kbd></button>
+  </header>
+  <main id="stage" aria-label="截图框选区域">
+    <canvas id="canvas" tabindex="0" hidden aria-label="拖动鼠标框选截图；也可以使用整张按钮"></canvas>
+    <div id="intro" class="intro">
+      <div class="eyebrow">CAPTURE / COMPOSE</div>
+      <div class="intro-icon">⌗</div>
+      <h1>把屏幕里的内容，带进对话。</h1>
+      <p id="intro-description">正在准备截图…</p>
+      <div class="steps"><span><b>01</b> 选择屏幕</span><i>→</i><span><b>02</b> 框选与标注</span><i>→</i><span><b>03</b> 放入输入框</span></div>
+      <button id="choose" class="primary" hidden>选择屏幕或窗口 <span>↗</span></button>
+      <p class="privacy">不下载图片 · 不自动发送消息</p>
+    </div>
+    <div id="dimensions" hidden></div>
+  </main>
+  <div id="notice" role="status" hidden></div>
+  <footer>
+    <div class="tools" role="group" aria-label="截图工具">
+      <button data-tool="select" class="tool active" title="重新框选区域" aria-pressed="true">框选</button>
+      <span class="divider"></span>
+      <button data-tool="rectangle" class="tool" title="矩形标注" aria-pressed="false">□ <span>画框</span></button>
+      <button data-tool="arrow" class="tool" title="箭头标注" aria-pressed="false">↗ <span>箭头</span></button>
+      <button data-tool="pen" class="tool" title="自由画笔" aria-pressed="false">✎ <span>画笔</span></button>
+      <input id="color" type="color" value="#ff595e" aria-label="标注颜色" title="标注颜色">
+      <button id="undo" class="tool" title="撤销标注（Ctrl / Cmd + Z）" disabled>↶</button>
+    </div>
+    <div class="actions">
+      <button id="whole" class="quiet" disabled>整张</button>
+      <button id="copy" class="quiet" disabled title="仅在点击时写入剪贴板">复制图片</button>
+      <button id="confirm" class="primary" disabled>放入输入框 <kbd>↵</kbd></button>
+    </div>
+  </footer>
+  <script type="module" src="editor.js"></script>
+</body>
+</html>
