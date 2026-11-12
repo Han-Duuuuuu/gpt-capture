@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "GPT 截图助手",
+  "version": "1.0.0",
+  "description": "框选网页或桌面截图，确认后直接放进 ChatGPT 输入框。图片只在内存中处理，不保存到磁盘。",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "desktopCapture",
+    "storage",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "显示 / 隐藏 GPT 截图按钮"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
+}
+
