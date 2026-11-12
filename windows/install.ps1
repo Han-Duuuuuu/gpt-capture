@@ -15,7 +15,7 @@ try {
     # Compile into a fresh file so a failed build never replaces an installed host.
     $buildPath = Join-Path $installRoot ('host-' + [guid]::NewGuid().ToString('N') + '.exe')
     $exePath = Join-Path $installRoot 'gpt-capture-host.exe'
-    Add-Type -Path (Join-Path $PSScriptRoot 'native-host.cs') -OutputAssembly $buildPath -OutputType ConsoleApplication -ReferencedAssemblies 'System.dll','System.Core.dll','System.Drawing.dll','System.Runtime.Serialization.dll'
+    Add-Type -Path (Join-Path $PSScriptRoot 'native-host.cs') -OutputAssembly $buildPath -OutputType ConsoleApplication -ReferencedAssemblies 'System.dll','System.Core.dll','System.Drawing.dll','System.Runtime.Serialization.dll','System.Xml.dll'
     Move-Item -LiteralPath $buildPath -Destination $exePath -Force
     $hostManifest = @{
         name = 'com.gpt_capture.assistant'
