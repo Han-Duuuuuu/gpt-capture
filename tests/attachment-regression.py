@@ -110,11 +110,13 @@ with sync_playwright() as p:
     }''', expected=False, method='paste')
     assert ignored['unrelated'] == 0
 
-    scenario('canceled paste and a hidden file input alone do not count as a new attachment', '''()=>{
+    scenario('paste cancellation, hidden input and visible upload button do not count as an attachment', '''()=>{
       document.querySelector('#prompt-textarea').addEventListener('paste',e=>{
         received.paste++;e.preventDefault();
         const hidden=document.createElement('input');hidden.type='file';hidden.hidden=true;
         hidden.dataset.testid='file-upload';document.querySelector('#composer-form').append(hidden);
+        const button=document.createElement('button');button.dataset.testid='file-upload-button';
+        button.textContent='Upload files';document.querySelector('#composer-form').append(button);
       });
     }''', expected=False, method='paste')
     browser.close()

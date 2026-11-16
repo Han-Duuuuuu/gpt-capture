@@ -152,12 +152,16 @@
     const name = `GPT截图-${Date.now()}.png`;
     const file = new File([bytes], name, {type: 'image/png', lastModified: Date.now()});
     const transfer = new DataTransfer(); transfer.items.add(file);
-    const markers = '[data-testid*="attachment"], [data-testid*="file"], [data-testid*="upload"], button[aria-label*="Remove"], button[aria-label*="移除"], button[aria-label*="删除"]';
+    const previewImages = '[data-testid*="attachment"] img, [data-testid*="file"] img, [data-testid*="upload"] img';
+    const removeButtons = 'button[aria-label*="Remove image"], button[aria-label*="Remove file"], button[aria-label*="Remove attachment"], button[aria-label*="移除图片"], button[aria-label*="移除文件"], button[aria-label*="删除图片"], button[aria-label*="删除文件"]';
     const visible = el => el.isConnected && el.getClientRects().length > 0;
     function attachmentElements() {
       const current = findComposer() || composer, area = composerArea(current);
       // ChatGPT can render attachment previews outside the editor's form.
-      return new Set([...area.querySelectorAll('img'), ...document.querySelectorAll(markers)].filter(visible));
+      // The upload button itself is not an attachment, even if its testid contains
+      // "file" or "upload". Count previews/removal controls, or the exact filename.
+      return new Set([...area.querySelectorAll('img'), ...document.querySelectorAll(previewImages),
+        ...document.querySelectorAll(removeButtons)].filter(visible));
     }
     const before = new Map([...attachmentElements()].map(el => [el, el.getAttribute('src')]));
     let confirmed = false, method = 'paste';
