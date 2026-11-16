@@ -6,6 +6,8 @@ ChatGPT 网页端的 Edge 截图插件。框选、标注后直接把图片放入
 
 [下载最新版 ZIP](https://github.com/Han-Duuuuuu/gpt-capture/archive/refs/heads/main.zip)
 
+1.1.2 修复自动回填：优先向当前输入框粘贴图片，未接收时才使用关联的上传控件；识别延迟、输入框外的附件预览，避免误用隐藏控件或重复上传。已安装的 Windows 截图助手无需重新安装。
+
 ## 安装
 
 1. 下载并完整解压。升级时先在 `edge://extensions/` 移除 1.0 旧版。

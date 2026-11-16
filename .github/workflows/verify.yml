@@ -5,6 +5,18 @@ on:
 permissions:
   contents: read
 jobs:
+  attachment-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install browser regression test dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install playwright==1.62.0
+          .venv/bin/python -m playwright install --with-deps chromium
+      - name: Verify screenshot attachment delivery
+        run: .venv/bin/python tests/attachment-regression.py
   windows-host:
     runs-on: windows-latest
     timeout-minutes: 10

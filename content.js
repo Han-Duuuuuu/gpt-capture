@@ -116,8 +116,32 @@
   });
 
   function findComposer() {
-    return [...document.querySelectorAll('#prompt-textarea, [data-testid="prompt-textarea"], [contenteditable="true"][role="textbox"], textarea[placeholder]')]
-      .find(el => el.getClientRects().length && !el.disabled && el.getAttribute('aria-disabled') !== 'true');
+    // A selector list returns document order, so a sidebar textarea could win over
+    // #prompt-textarea. Try the actual ChatGPT editor before generic textboxes.
+    for (const selector of ['#prompt-textarea', '[data-testid="prompt-textarea"]', '[contenteditable="true"][role="textbox"]', 'textarea[placeholder]']) {
+      const composer = [...document.querySelectorAll(selector)].find(el =>
+        el.getClientRects().length && !el.disabled && !el.readOnly &&
+        el.getAttribute('aria-disabled') !== 'true' && (el.isContentEditable || el.tagName === 'TEXTAREA'));
+      if (composer) return composer;
+    }
+  }
+
+  function composerArea(composer) {
+    return composer.closest('form') || composer.closest('[data-testid="composer"], #composer-background') ||
+      composer.parentElement?.parentElement || document.body;
+  }
+
+  function findUploadInput(composer) {
+    const area = composerArea(composer), form = composer.closest('form');
+    const acceptsPNG = input => !input.accept || input.accept.toLowerCase().split(',')
+      .some(type => ['image/*', 'image/png', '.png', '*/*'].includes(type.trim()));
+    const candidates = [...document.querySelectorAll('input[type="file"]')]
+      .filter(input => input.isConnected && !input.disabled && acceptsPNG(input));
+    const relevant = candidates.filter(input => area.contains(input) || (form && input.form === form));
+    if (relevant.length) return relevant.find(input => input.accept) || relevant[0];
+    // A single body-level upload input is common. Multiple unrelated hidden
+    // controls are ambiguous; never blindly dispatch to the first one.
+    return candidates.length === 1 ? candidates[0] : undefined;
   }
 
   async function insertImage(dataUrl) {
@@ -128,40 +152,63 @@
     const name = `GPT截图-${Date.now()}.png`;
     const file = new File([bytes], name, {type: 'image/png', lastModified: Date.now()});
     const transfer = new DataTransfer(); transfer.items.add(file);
-    const root = composer.closest('form') || composer.closest('[data-testid="composer"]') || composer.parentElement.parentElement.parentElement;
-    const selector = 'img, [data-testid*="attachment"], [data-testid*="file"], button[aria-label*="Remove"], button[aria-label*="移除"], button[aria-label*="删除"]';
-    const before = new Set(root.querySelectorAll(selector));
-    const beforeSources = new Map([...before].map(el => [el, el.getAttribute('src')]));
-    let settle, timer;
-    const observed = new Promise(resolve => { settle = resolve; });
+    const markers = '[data-testid*="attachment"], [data-testid*="file"], [data-testid*="upload"], button[aria-label*="Remove"], button[aria-label*="移除"], button[aria-label*="删除"]';
+    const visible = el => el.isConnected && el.getClientRects().length > 0;
+    function attachmentElements() {
+      const current = findComposer() || composer, area = composerArea(current);
+      // ChatGPT can render attachment previews outside the editor's form.
+      return new Set([...area.querySelectorAll('img'), ...document.querySelectorAll(markers)].filter(visible));
+    }
+    const before = new Map([...attachmentElements()].map(el => [el, el.getAttribute('src')]));
+    let confirmed = false, method = 'paste';
+    const waiters = new Set();
     function check() {
-      const found = [...root.querySelectorAll(selector)].some(el =>
-        !before.has(el) || (el.tagName === 'IMG' && el.getAttribute('src') !== beforeSources.get(el)));
-      if (found || root.textContent.includes(name)) settle(true);
+      if (confirmed) return;
+      const found = [...attachmentElements()].some(el => !before.has(el) ||
+        (el.tagName === 'IMG' && el.getAttribute('src') !== before.get(el)));
+      if (found || document.body.textContent.includes(name)) {
+        confirmed = true;
+        for (const done of [...waiters]) done(true);
+      }
+    }
+    function waitForAttachment(ms) {
+      check();
+      if (confirmed) return Promise.resolve(true);
+      return new Promise(resolve => {
+        const timer = setTimeout(() => done(false), ms);
+        function done(value) { clearTimeout(timer); waiters.delete(done); resolve(value); }
+        waiters.add(done);
+      });
     }
     const observer = new MutationObserver(check);
-    observer.observe(root, {childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'data-testid']});
-    timer = setTimeout(() => settle(false), 5000);
+    observer.observe(document.body, {childList: true, subtree: true, characterData: true, attributes: true,
+      attributeFilter: ['src', 'data-testid', 'aria-label', 'class', 'style', 'hidden']});
     try {
-      // Use the site's file upload input when available; preserve any typed draft.
-      const candidates = [...document.querySelectorAll('input[type="file"]')].filter(el => {
-        const accept = el.accept.toLowerCase();
-        return !el.disabled && (!accept || /image\/\*|image\/png|\.png|\*\/\*/.test(accept));
-      });
-      const input = candidates.find(el => root.contains(el)) || candidates[0];
-      if (input) {
-        input.value = '';
-        input.files = transfer.files;
-        input.dispatchEvent(new Event('change', {bubbles: true}));
-      } else {
-        composer.focus();
-        composer.dispatchEvent(new ClipboardEvent('paste', {clipboardData: transfer, bubbles: true, cancelable: true, composed: true}));
+      // Use ChatGPT's paste handler first. This does not write to the system clipboard.
+      composer.focus({preventScroll: true});
+      const paste = new ClipboardEvent('paste', {clipboardData: transfer, bubbles: true, cancelable: true, composed: true});
+      const consumed = !composer.dispatchEvent(paste);
+      if (!await waitForAttachment(1500)) {
+        if (consumed) {
+          // An accepted paste may still be preparing its preview; do not duplicate
+          // it through a second upload path while it is being processed.
+          await waitForAttachment(8500);
+        } else {
+          const current = findComposer();
+          const input = current && findUploadInput(current);
+          if (input) {
+            method = 'file-input'; input.value = ''; input.files = transfer.files;
+            input.dispatchEvent(new Event('change', {bubbles: true}));
+            await waitForAttachment(8500);
+          }
+        }
       }
-      check();
-      const confirmed = await observed;
       if (confirmed) toast('截图已放入输入框，请检查附件后发送。');
-      return {attempted: true, confirmed};
-    } finally { observer.disconnect(); clearTimeout(timer); }
+      return {attempted: true, confirmed, method};
+    } finally {
+      observer.disconnect();
+      for (const done of [...waiters]) done(false);
+    }
   }
 
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
